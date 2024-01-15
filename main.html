@@ -1,0 +1,250 @@
+<html>
+
+<head>
+    <style>
+        .container {
+            position: relative;
+            width: 750px;
+            height: 750px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+        }
+
+        .chessposition {
+            width: 150px;
+            height: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2;
+        }
+
+        .humanchess {
+            width: 30px;
+            height: 30px;
+            background-color: aqua;
+            margin: 2px;
+        }
+
+        .tigerchess {
+            width: 60px;
+            height: 60px;
+            background-color: rgb(255, 144, 25);
+        }
+
+        .prompt {
+            width: 80px;
+            height: 80px;
+            border: 3px solid #c52727;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="container" class="container">
+        <div style="top: 74px; position: absolute; height: 600px; width: 600px; left: 74px;">
+            <img style="height: 600px; width: 600px; z-index: 1;" src="./a.png">
+        </div>
+
+    </div>
+    <script>
+        const TIGER_TURN = true;
+        const HUMAN_TURN = false
+        let turn = HUMAN_TURN;
+        const container = document.querySelector('#container')
+        const chessMap = [];
+        let currentSelectedChess
+        let currentSelectedArea
+        let currentRole
+        const move = (from, to) => {
+            turn = ! turn
+            if (currentRole == 'human') {
+                // human move
+                if (chessMap[from.x][from.y].num == 1) {
+                    chessMap[from.x][from.y] = null
+                } else {
+                    chessMap[from.x][from.y].num--
+                }
+                chessMap[to.x][to.y] = getHuman(1)
+                currentSelectedArea.removeChild(currentSelectedChess)
+                getChessArea(to.x, to.y).appendChild(getHumanChess())
+            } else {
+                // tiger move
+                if (Math.abs(from.x - to.x) == 2 || Math.abs(from.y - to.y) == 2) {
+                    const humanX = (Number(from.x) + Number(to.x)) / 2
+                    const humanY = (Number(from.y) + Number(to.y)) / 2
+                    console.log('eat' + humanX + '-' + humanY);
+                    chessMap[humanX][humanY] = null
+                    const area = getChessArea(humanX, humanY)
+                    const dieHuman = area.querySelector('.humanchess')
+                    area.removeChild(dieHuman)
+                }
+                chessMap[from.x][from.y] = null
+                chessMap[to.x][to.y] = getTiger()
+                currentSelectedArea.removeChild(currentSelectedChess)
+                getChessArea(to.x, to.y).appendChild(getTigerChess())
+            }
+
+        }
+        const clearPrompt = () => {
+            //TODO 清除提示
+            const prompts = document.querySelectorAll('.prompt')
+            prompts.forEach(x => {
+                x.parentNode.removeChild(x)
+            })
+        }
+        const getPrompt = () => {
+            const prompt = document.createElement('div')
+            prompt.classList.add('prompt')
+            prompt.addEventListener('click', (e) => {
+                // move
+                const area = e.target.parentNode
+                const currentCoordinate = getPositionCoordnate(currentSelectedArea)
+                const targetCoordinate = getPositionCoordnate(area)
+                move(currentCoordinate, targetCoordinate)
+                console.log('move ' + currentSelectedArea.id + ' to ' + area.id);
+
+                clearPrompt()
+            })
+            return prompt
+        }
+        const getPositionCoordnate = (chessArea) => {
+            return {
+                x: chessArea.id.substring(1)[0],
+                y: chessArea.id.substring(1)[1]
+            }
+        }
+        const getChessInMap = (x, y) => {
+            return chessMap[x][y]
+        }
+        const checkIsAvailable = (e) => {
+            if (e.x > 4 || e.x < 0 || e.y > 4 || e.y < 0) {
+                return false
+            }
+            return true
+        }
+        const canEat = (tigerCoordinate) => {
+            console.log('------');
+            console.log(tigerCoordinate);
+            const currentCoordinate = getPositionCoordnate(currentSelectedArea)
+            const x = (Number(currentCoordinate.x) + Number(tigerCoordinate.x)) / 2
+            const y = (Number(currentCoordinate.y) + Number(tigerCoordinate.y)) / 2
+            if (chessMap[x][y] != null && chessMap[x][y].role == 'human') {
+                return true
+            }
+            return false
+        }
+        const chessClickedHandler = (e) => {
+            
+            clearPrompt()
+            const chess = e.target
+            currentSelectedChess = chess
+            const area = e.target.parentNode
+            currentSelectedArea = area
+            const { x, y } = getPositionCoordnate(area)
+            const chessInMap = getChessInMap(x, y)
+            currentRole = chessInMap.role
+            const up = { x: x, y: y - 1 }
+            const tiger_up = { x: x, y: y - 2 }
+            const below = { x: x, y: Number(y) + 1 }
+            const tiger_below = { x: x, y: Number(y) + 2 }
+            const right = { x: Number(x) + 1, y: y }
+            const tiger_right = { x: Number(x) + 2, y: y }
+            const left = { x: x - 1, y: y }
+            const tiger_left = { x: x - 2, y: y }
+
+
+
+            if (chessInMap.role == 'human' && turn == HUMAN_TURN) {
+                console.log("aa");
+                const availableAreaCoordinates = [up, below, left, right]
+                for (let index = 0; index < availableAreaCoordinates.length; index++) {
+                    const coordinates = availableAreaCoordinates[index];
+                    if (checkIsAvailable(coordinates)) {
+                        // console.log(coordinates);
+                        if (!getChessInMap(coordinates.x, coordinates.y)) {
+                            // set prompt
+                            getChessArea(coordinates.x, coordinates.y).appendChild(getPrompt())
+                        }
+                    }
+                }
+            } else if(chessInMap.role == 'tiger' && turn == TIGER_TURN) {
+                const availableAreaCoordinates = [up, below, left, right, tiger_below, tiger_left, tiger_right, tiger_up]
+                for (let index = 0; index < 4; index++) {
+                    const coordinates = availableAreaCoordinates[index];
+                    if (checkIsAvailable(coordinates)) {
+                        // console.log(coordinates);
+                        if (!getChessInMap(coordinates.x, coordinates.y)) {
+                            getChessArea(coordinates.x, coordinates.y).appendChild(getPrompt())
+                        }
+                    }
+                }
+                for (let i = 4; i < 8; i++) {
+                    const coordinates = availableAreaCoordinates[i];
+                    if (checkIsAvailable(coordinates)) {
+                        // console.log(coordinates);
+                        if (!getChessInMap(coordinates.x, coordinates.y) && canEat(coordinates)) {
+                            getChessArea(coordinates.x, coordinates.y).appendChild(getPrompt())
+                        }
+                    }
+                }
+            }
+
+        }
+        const getChessArea = (x, y) => {
+            return document.querySelector("#a" + x + y)
+        }
+        const getHumanChess = () => {
+            const chess = document.createElement('div')
+            chess.classList.add("humanchess")
+            chess.addEventListener('click', chessClickedHandler)
+            return chess
+        }
+        const getTigerChess = () => {
+            const chess = document.createElement('div')
+            chess.classList.add("tigerchess")
+            chess.addEventListener('click', chessClickedHandler)
+            return chess
+        }
+        const getTiger = (num) => {
+            return {
+                role: 'tiger',
+                num: num
+            }
+        }
+        const getHuman = (num) => {
+            return {
+                role: 'human',
+                num
+            }
+        }
+        const init = () => {
+            for (let i = 0; i < 5; i++) {
+                chessMap.push([])
+                for (let j = 0; j < 5; j++) {
+                    const div = document.createElement('div')
+                    div.classList.add('chessposition')
+                    div.id = 'a' + i + '' + j
+                    container.appendChild(div)
+                    chessMap[i][j] = null
+                }
+            }
+            for (let i = 0; i < 5; i++) {
+                chessMap[4][i] = getHuman(3);
+                for (let j = 0; j < 3; j++)
+                    getChessArea(4, i).appendChild(getHumanChess())
+            }
+            chessMap[3][1] = getTiger(1)
+            getChessArea(3, 1).appendChild(getTigerChess())
+            chessMap[3][3] = getTiger(1)
+            getChessArea(3, 3).appendChild(getTigerChess())
+        }
+        init()
+        console.log(chessMap);
+    </script>
+</body>
+
+</html>
